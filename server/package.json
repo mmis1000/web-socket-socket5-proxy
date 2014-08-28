@@ -1,0 +1,15 @@
+{
+  "author": [
+    {
+      "name": "mmis1000"
+    }
+  ],
+  "name": "proxy_server",
+  "description": "test",
+  "main": "./index.js",
+  "version": "0.0.1",
+  "dependencies": {
+    "socket.io": "~1.0.6",
+    "express": "^4.8.5"
+  }
+}
