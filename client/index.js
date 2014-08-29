@@ -1,7 +1,9 @@
 // http://www.ietf.org/rfc/rfc1928.txt
 
 // Tested with: curl http://www.google.se/ --socks5 1080 --proxy-user foo:bar
-var wsServer = "ws://127.0.0.1:34689";
+var config = require('./config.js');
+
+var wsServer = config.wsServer;
 
 var States = {
   CONNECTED:0,
@@ -237,7 +239,7 @@ function dump(chunk){
 
 
 var server= net.createServer(accept);
-server.listen(1088);
+server.listen(config.proxyPort);
 
 server.on('error', function(err) {
     console.log(err);

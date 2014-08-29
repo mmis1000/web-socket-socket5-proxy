@@ -1,4 +1,6 @@
-var port = 34689;
+var config = require('./config.js');
+
+var port = config.port;
 
 var SocketServer = require('./socket-server.js');
 
@@ -10,11 +12,12 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var path = require('path');
 
+
 app.get('/', function(req, res){
-    res.redirect('/index.htm');
+    res.redirect(config.index);
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, config.publicFolder)));
 
 io.on('connection', function(socket){
   console.log('a user connected');
