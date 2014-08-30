@@ -57,7 +57,7 @@ var AddressTypes = {
       }
    }
 }
-var net_ = new (require('./web-socket.js'))(wsServer);
+var net_ = new (require('./web-socket.js'))(wsServer, config.internalProxyPort, config.httpProxy);
 var net = require('net')
 var clients = [];
 

@@ -1,6 +1,9 @@
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
 var SocketIoClient = require('socket.io-client');
+var ProxyHelper = require('./proxy-helper.js');
+
+var proxyHelper = new ProxyHelper;
 
 function padding(str, fill, length) {
     while (str.length < length) {
@@ -255,7 +258,12 @@ function Net(wsServer) {
 */
 
 
-function Net(wsServer) {
+function Net(wsServer, proxyPort, proxyURL) {
+
+    proxyHelper.init(proxyURL, proxyPort);
+
+    wsServer = proxyHelper.solve(wsServer)
+    
     var webSocketClient = new WebSocketClient(SocketIoClient(wsServer));
     return {
         createConnection : function(port, address, func) {
