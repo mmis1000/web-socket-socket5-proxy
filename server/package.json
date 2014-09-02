@@ -7,7 +7,7 @@
   "name": "proxy_server",
   "description": "test",
   "main": "./index.js",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "dependencies": {
     "socket.io": "~1.0.6",
     "express": "^4.8.5"
