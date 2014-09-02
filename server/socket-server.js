@@ -286,6 +286,8 @@ SocketServer.prototype.destroy = function destroy() {
     this.sockets.forEach(function(socket){
         try {
             socket.destroy();
+        } catch (e) {}
+        try {
             socket.removeAllListeners();
         } catch (e) {}
     });
