@@ -65,9 +65,19 @@ function accept(socket){
   console.log('request comes!');//deubg
   clients.push(socket);
   socket.pstate = States.CONNECTED;
-
+  
+  /*
+  it is no always that the client got a end event), 
+  and can thus cause potential memory leak.
+  So ,also listen to "close".
+  */
   socket.on('end',function(){
     clients.splice(clients.indexOf(socket),1);
+  });
+  socket.on('close',function(){
+    if (clients.indexOf(socket) >= 0) {
+      clients.splice(clients.indexOf(socket),1);
+    }
   });
   var handshake = function(chunk){
     console.log('start handshake!');//deubg
@@ -76,6 +86,7 @@ function accept(socket){
     if(chunk[0]!= 5){
       console.log('Wrong version.', chunk[0]);//debug
       socket.end();
+      return;
     }
     n= chunk[1]; // Number of auth methods
 
@@ -170,6 +181,35 @@ function handleRequest(chunk){
     this.request = chunk;
      console.log('start proxy!');//deubg
     this.proxy =  net_.createConnection(port,address,initProxy.bind(this));
+    
+    /*these handles should bind before the proxy start, since they may fire before proxy init, and crash the whole server*/
+    this.on('error',function(err){
+      console.log(err)
+    }.bind(this));
+    this.proxy.on('error',function(err){
+      console.log(err);
+    }.bind(this));
+    
+    this.proxy.on('close',function(err){
+      this.proxy.destroy();
+      this.destroy();
+      
+      process.nextTick(function(){
+        this.proxy.removeAllListeners();
+        this.removeAllListeners();
+      }.bind(this)); 
+    }.bind(this));
+    
+    this.on('close',function(err){
+      this.proxy.destroy();
+      this.destroy();
+      
+      process.nextTick(function(){
+        this.proxy.removeAllListeners();
+        this.removeAllListeners();
+      }.bind(this)); 
+    }.bind(this));
+
   }else{
     this.end(chunk);
   }
@@ -199,24 +239,6 @@ function initProxy(){
   
   this.on('end',function(err){
     this.proxy.end();
-  }.bind(this));
-  
-  this.on('error',function(err){
-    console.log(err)
-  }.bind(this));
-  
-  this.proxy.on('error',function(err){
-    console.log(err);
-  }.bind(this));
-  
-  this.proxy.on('close',function(err){
-    this.proxy.destroy();
-    this.destroy();
-  }.bind(this));
-  
-  this.on('close',function(err){
-    this.proxy.destroy();
-    this.destroy();
   }.bind(this));
 }
 

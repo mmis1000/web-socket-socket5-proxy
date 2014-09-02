@@ -1,4 +1,19 @@
+var EventEmitter = require('events').EventEmitter;
+var util = require('util');
+
 var net = require('net');
+
+
+function padding(str, fill, length) {
+    while (str.length < length) {
+        str = fill + str;
+    }
+    return str
+}
+
+function getId() {
+    return padding(Math.floor(0xffffffff * Math.random()).toString(16), "0", 8)
+}
 
 /*
 function SocketServer(ws) {
@@ -127,10 +142,37 @@ function SocketServer(ws) {
     this.socketMap = {};
     this.authed = true;
     
-    this.debug = true;
+    this.sessionId = getId();
     
+    this.timeout = 15 * 60 * 1000;
+    this.lastPing = Date.now();
+    
+    this.debug = true;
+    this.isAlive = true;
+
     this.webSocket.on('new_connection', this.onNewConnection.bind(this));
     this.webSocket.on('clear_connection', this.onClearConnection.bind(this));
+    this.webSocket.on('client_ping', this.onClientPing.bind(this));
+    
+    this.timeoutListenerId = setInterval(this.checkTimeout.bind(this), this.timeout);
+    this.onceConnect();
+}
+
+util.inherits(SocketServer, EventEmitter);
+
+SocketServer.prototype.onceConnect = function onceConnect() {
+    this.webSocket.emit('init_session', this.sessionId);
+};
+
+SocketServer.prototype.checkTimeout = function checkTimeout() {
+    if (this.lastPing + this.timeout < Date.now()) {
+        this.destroy();
+    }
+};
+
+SocketServer.prototype.onClientPing = function onClientPing() {
+    this.log('client ping!');
+    this.lastPing = Date.now();
 }
 
 SocketServer.prototype.onNewConnection = function onNewConnection(data) {
@@ -239,4 +281,29 @@ SocketServer.prototype.unPack_ = function (str) {
     return data;
 }
 
+SocketServer.prototype.destroy = function destroy() {
+    clearInterval(this.timeoutListenerId);
+    this.sockets.forEach(function(socket){
+        try {
+            socket.destroy();
+            socket.removeAllListeners();
+        } catch (e) {}
+    });
+    this.sockets = null;
+    this.socketMap = null;
+    this.webSocket.removeAllListeners();
+    
+    try {
+        this.webSocket.disconnect(true);
+    } catch (e) {
+        console.log(e);
+    }
+    
+    this.webSocket = null;
+    
+    console.log('shuting down connections');
+    
+    this.isAlive = false;
+    this.emit('destroy');
+}
 module.exports = SocketServer;

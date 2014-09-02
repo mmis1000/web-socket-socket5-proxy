@@ -41,11 +41,44 @@ encrypter.prototype.decrypt = function (obj) {
 var WebSocketClient = function(ioClient) {
     this.ioClient  = ioClient;
     this.connections = {};
-    this.usedEvents = {}
+    
+    this.sockets = [];
+    this.usedEvents = {};
+    
+    this.sessionId = null;
+    
+    this.pingInterval = 3 * 60 * 1000;
+    
+    this.ioClient.on('disconnect', function(e){
+        console.log(e);
+    });
+    
+    this.ioClient.on('init_session', function(sess){
+        console.log(sess);
+        if (this.sessionId === null) {
+            this.sessionId = sess;
+        }
+        if (this.sessionId !== sess) {
+            console.log('session changed, drop all connection now');
+            this.dropSession();
+        }
+    }.bind(this));
+    
+    this.ioClient.once('connect', function(){
+        setInterval(this.pingServer.bind(this), this.pingInterval);
+    }.bind(this));
+    
+    this.ioClient.on('reconnect_error', function(e){
+        console.log(e);
+    });
     
     this.ioClient.on('connect', function(){
         console.log('underlying connection established');
-    });
+    }.bind(this));
+}
+
+WebSocketClient.prototype.pingServer = function pingServer() {
+    this.ioClient.emit("client_ping");
 }
 
 WebSocketClient.prototype.requestConnection = function requestConnection(id, ip, port) {
@@ -55,16 +88,45 @@ WebSocketClient.prototype.requestConnection = function requestConnection(id, ip,
         sessionId : id
     });
 }
+WebSocketClient.prototype.dropSession = function dropSession() {
+    var i;
+    for (i = this.sockets.length - 1; i >= 0; i--) {
+        this.clearConnection(
+            this.sockets[i].sessionId,
+            true
+        );
+    }
+}
 
-WebSocketClient.prototype.clearConnection = function clearConnection(id) {
+WebSocketClient.prototype.clearConnection = function clearConnection(id, force) {
     var i
+    
     var events = this.usedEvents[id];
     if (!events) {return;}
     for (i = events.length - 1; i >= 0; i--) {
         this.ioClient.removeAllListeners(events[i])
     }
+
     delete this.usedEvents[id];
-    this.ioClient.emit('clear_connection', id);
+
+
+    for (i = this.sockets.length - 1; i >= 0; i--) {
+        if (this.sockets[i].sessionId === id) {
+            break;
+        }
+    }
+
+    if (!force) {
+        this.ioClient.emit('clear_connection', id);
+    } else {
+        this.sockets[i].emit('error', 'session reset');
+        
+        if (!this.sockets[i].closed) {
+            this.sockets[i].emit('close');
+        }
+    }
+
+    this.sockets.splice(i, 1);
 }
 
 WebSocketClient.prototype.on =
@@ -85,12 +147,15 @@ WebSocketClient.prototype.createSocket = function createSocket(port, address, fu
     var id = getId();
     this.usedEvents[id] = [];
     
-    console.log('create socket to ' + address + ":" + port);
+    console.log(id + ' : create socket to ' + address + ":" + port);
     
     var socket = new Socket(this, id, address, port);
     if (typeof func === "function") {
         socket.once('connect', func);
     }
+    
+    this.sockets.push(socket);
+    
     return socket
 }
 
@@ -118,8 +183,9 @@ var Socket = function(socketClient, id, ip, port) {
     this.forwardEvent_("close");
     
     this.on('close', (function(){
+        this.closed = true;
         this.scClient.clearConnection(this.sessionId);
-        this.log('closed')
+        this.log('closed');
     }).bind(this))
     
     this.debug = true;
