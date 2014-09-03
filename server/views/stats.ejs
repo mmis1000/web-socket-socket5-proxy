@@ -1,0 +1,76 @@
+<%
+    function format(num) {
+        var str = num.toString();
+        var arr = str.split('');
+        for (i = arr.length - 3; i >= 1; i -= 3) {
+            arr.splice(i, 0, ',');
+        }
+        return arr.join('');
+    }
+%>
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Stats</title>
+            <style>
+                body {
+                    text-align : center;
+                }
+                table {
+                    width: 100%;
+                }
+            </style>
+    </head>
+    <body>
+  
+<!--<pre>
+<%= JSON.stringify(memoryUsage, null, 4) %>
+<%= JSON.stringify(sessions, null, 4) %>
+</pre>-->
+
+<div class='container-fluid'>
+    <div class="row">
+        <div class="col-sm-6">
+            <h2>memory usage</h2>
+            <table class="table table-bordered">
+                <tr>
+                    <th>rss</th>
+                    <th>heap total</th>
+                    <th>heap used</th>
+                </tr>
+                <tr>
+                    <td><%= format( memoryUsage.rss ) %></td>
+                    <td><%= format( memoryUsage.heapTotal ) %></td>
+                    <td><%= format( memoryUsage.heapUsed ) %></td>
+                </tr>
+            </table>
+        </div>
+        <div class="col-sm-6">
+            <h2>sessions, total : <%= sessions.length %></h2>
+            <table class="table table-bordered">
+                <tr>
+                    <th>id</th>
+                    <th>connections</th>
+                    <th>last ping</th>
+                    <th>create time</th>
+                </tr>
+            <% for(var i = 0; i< sessions.length; i++) {%>
+                <tr>
+                    <td><%= sessions[i].id.toString() %></td>
+                    <td><%= sessions[i].connections.toString() %></td>
+                    <td><%= Math.floor((Date.now() - sessions[i].lastPing) / 1000 / 60) %> minutes ago</td>
+                    <td><%= Math.floor((Date.now() - sessions[i].createTime) / 1000 / 60) %> minutes ago</td>
+                </tr>
+            <% } %>
+            </table>
+        </div>
+    </div>
+</div>
+
+<link href="/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+<link href="/css/bootstrap-theme.min.css" rel="stylesheet" type="text/css" />
+<script src="/js/jquery-1.11.1_min.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+
+    </body>
+</html>

@@ -144,6 +144,8 @@ function SocketServer(ws) {
     
     this.sessionId = getId();
     
+    this.createTime =  Date.now();
+    
     this.timeout = 15 * 60 * 1000;
     this.lastPing = Date.now();
     
@@ -165,7 +167,9 @@ SocketServer.prototype.onceConnect = function onceConnect() {
 };
 
 SocketServer.prototype.checkTimeout = function checkTimeout() {
+    this.log('check timeout for ' + this.sessionId);
     if (this.lastPing + this.timeout < Date.now()) {
+        this.log('timeout happened for ' + this.sessionId);
         this.destroy();
     }
 };
@@ -306,6 +310,6 @@ SocketServer.prototype.destroy = function destroy() {
     console.log('shuting down connections');
     
     this.isAlive = false;
-    this.emit('destroy');
+    this.emit('destroy', this.sessionId);
 }
 module.exports = SocketServer;
