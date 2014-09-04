@@ -15,127 +15,6 @@ function getId() {
     return padding(Math.floor(0xffffffff * Math.random()).toString(16), "0", 8)
 }
 
-/*
-function SocketServer(ws) {
-    this.webSocket = ws;
-    this.socket = null
-    this.authed = true;
-    
-    this.webSocket.on('set_target', this.onWebSocketSetTarget.bind(this));
-    
-    this.webSocket.on('FIN', this.onWebSocketFIN.bind(this));
-    this.webSocket.on('up_stream', this.onWebSocketUpStream.bind(this));
-    
-}
-
-SocketServer.prototype.onWebSocketSetTarget = function(target) {
-    this.log('connectiong to' + target.address + ":" + target.port);
-    
-    if (!this.authed) {
-        this.webSocket.emit('error', 'auth failed');
-    }
-    
-    this.socket = net.(target.port, target.address, this.onSocketConnect.bind(this));
-    
-    this.socket.on('data', this.onSocketData.bind(this));
-    this.socket.on('connect', this.onSocketConnect.bind(this));
-    this.socket.on('end', this.onSocketEnd.bind(this));
-    this.socket.on('close', this.onSocketClose.bind(this));
-    this.socket.on('error', this.onSocketError.bind(this));
-};
-
-SocketServer.prototype.onWebSocketFIN = function() {
-    this.wsClose();
-    this.sClose();
-}
-
-SocketServer.prototype.onWebSocketUpStream = function(data) {
-    this.log('sending data to dis server...');
-    if (!this.socket) {
-        this.wsError('not connected');
-        return;
-    }
-    this.socket.write(new Buffer(data, 'base64'));
-}
-
-SocketServer.prototype.onSocketData = function(data) {
-    dump(data);
-    this.log('sending data to client...');
-    this.webSocket.emit('down_stream', data.toString('base64'));
-};
-
-SocketServer.prototype.onSocketConnect = function() {
-    this.log('connected to dis server.');
-    this.webSocket.emit('target_setted');
-};
-
-SocketServer.prototype.onSocketClose = function() {
-    this.wsClose();
-    this.sClose();
-};
-
-SocketServer.prototype.onSocketEnd = function() {
-    this.wsClose();
-    this.sClose();
-};
-
-SocketServer.prototype.onSocketError = function() {
-    this.wsError('error', 'lost connection');
-    this.sClose();
-};
-
-
-SocketServer.prototype.wsClose = function() {
-    this.webSocket.emit('FIN');
-    this.wsDelayClose();
-}
-
-SocketServer.prototype.wsError = function(err) {
-    this.webSocket.emit('error', 'err');
-    this.wsDelayClose();
-}
-
-SocketServer.prototype.wsDelayClose =  function(err) {
-    var self = this;
-    self.log('waiting to stop ws connect...');
-    setTimeout(function(){
-        self.webSocket.disconnect();
-    }, 10000)
-}
-
-SocketServer.prototype.sClose = function() {
-    this.log('stop socket connect...');
-    this.socket.end();
-    this.socket.destroy();
-}
-
-SocketServer.prototype.log = function(msg) {
-    if (this.debug) {
-        console.log(msg);
-    }
-}
-
-
-function dump(chunk){
-  console.log('dumping:');
-  console.log(chunk.toString('utf8'));
-  
-  var res = "";
-  
-  for (var i = 0; i < chunk.length; i++) {
-    res += (chunk[i] > 15 ? "" : "0") + chunk[i].toString(16) + " ";
-    if ((i + 1) % 8 === 0) {
-        res += "\n";
-    }
-  }
-  
-  console.log(res);
-  
-}
-
-module.exports = SocketServer;
-*/
-
 function SocketServer(ws) {
     this.webSocket = ws;
     this.sockets = [];
@@ -197,6 +76,13 @@ SocketServer.prototype.onNewConnection = function onNewConnection(data) {
     this.forwardEvent(id, "error");
     this.forwardEvent(id, "close");
     
+    this.socketMap[id].once("close", function() {
+        /*
+            these things can handle before client request
+            so we can release socket resource as soon as possible.
+        */
+        this.onSocketClose(id)
+    }.bind(this))
     
     this.webSocket.on(id + '-client_write', this.onClientWrite.bind(this));
     this.webSocket.on(id + '-client_end', this.onClientEnd.bind(this));
@@ -204,6 +90,12 @@ SocketServer.prototype.onNewConnection = function onNewConnection(data) {
     
     //console.log(id + '-client_write');
 }
+
+SocketServer.prototype.onSocketClose = function onSocketClose(id) {
+    try {
+        this.socketMap[id].destroy();
+    } catch (e) {}
+};
 
 SocketServer.prototype.onClearConnection = function onClearConnection(id) {
     var socket, i;
@@ -255,7 +147,9 @@ SocketServer.prototype.onClientDestroy = function onClientDestroy(data) {
     
     this.log(id + " : client destroy");
     
-    //this.socketMap[id].destroy();
+    try {
+        this.socketMap[id].destroy();
+    } catch (e) {}
 }
 
 SocketServer.prototype.forwardEvent = function forwardEvent(id, type) {
