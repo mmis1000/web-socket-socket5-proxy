@@ -32,7 +32,6 @@ function SocketServer(ws) {
     this.isAlive = true;
 
     this.webSocket.on('new_connection', this.onNewConnection.bind(this));
-    this.webSocket.on('clear_connection', this.onClearConnection.bind(this));
     this.webSocket.on('client_ping', this.onClientPing.bind(this));
     
     this.timeoutListenerId = setInterval(this.checkTimeout.bind(this), this.timeout);
@@ -92,24 +91,24 @@ SocketServer.prototype.onNewConnection = function onNewConnection(data) {
 }
 
 SocketServer.prototype.onSocketClose = function onSocketClose(id) {
+
+    if (!this.socketMap[id]) {
+        return false;
+    }
+    
     try {
         this.socketMap[id].destroy();
+    } catch (e) {}
+        
+    try {
+        this.onClearConnection(id);
     } catch (e) {}
 };
 
 SocketServer.prototype.onClearConnection = function onClearConnection(id) {
     var socket, i;
     
-    if (!this.socketMap[id]) {
-        return false;
-    }
-    
     this.log(id + " : clearing connection");
-    
-    //make sure socket were destroyed
-    try {
-        this.socketMap[id].destroy();
-    } catch (e) {}
     
     //make sure all reference were removed
     this.socketMap[id].removeAllListeners();
@@ -147,9 +146,7 @@ SocketServer.prototype.onClientDestroy = function onClientDestroy(data) {
     
     this.log(id + " : client destroy");
     
-    try {
-        this.socketMap[id].destroy();
-    } catch (e) {}
+    this.onSocketClose(id);
 }
 
 SocketServer.prototype.forwardEvent = function forwardEvent(id, type) {

@@ -117,7 +117,7 @@ WebSocketClient.prototype.clearConnection = function clearConnection(id, force) 
     }
 
     if (!force) {
-        this.ioClient.emit('clear_connection', id);
+        //this.ioClient.emit('clear_connection', id);
     } else {
         this.sockets[i].emit('error', 'session reset');
         
