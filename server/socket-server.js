@@ -87,6 +87,10 @@ SocketServer.prototype.onNewConnection = function onNewConnection(data) {
     this.webSocket.on(id + '-client_end', this.onClientEnd.bind(this));
     this.webSocket.on(id + '-client_destroy', this.onClientDestroy.bind(this));
     
+    socket.listendEvents = [];
+    socket.listendEvents.push(id + '-client_write');
+    socket.listendEvents.push(id + '-client_end');
+    socket.listendEvents.push(id + '-client_destroy');
     //console.log(id + '-client_write');
 }
 
@@ -119,11 +123,21 @@ SocketServer.prototype.onClearConnection = function onClearConnection(id) {
     i = this.sockets.indexOf(socket);
     this.sockets.splice(i, 1);
     
+    socket.listendEvents.forEach(function(ev) {
+        this.webSocket.removeAllListeners(ev);
+    }.bind(this));
 }
+
+SocketServer.prototype.dieConnection = function dieConnection(id, reason) {
+};
 
 SocketServer.prototype.onClientWrite = function onClientWrite(data) {
     data = this.unPack_(data);
     id = data.id;
+    if (!this.socketMap[id]) {
+        this.log(id + ' : unexpect write call after socket closed!');
+        return false;
+    }
     
     this.log(id + " : client write");
     try {
@@ -135,6 +149,10 @@ SocketServer.prototype.onClientWrite = function onClientWrite(data) {
 SocketServer.prototype.onClientEnd = function onClientEnd(data) {
     data = this.unPack_(data);
     id = data.id;
+    if (!this.socketMap[id]) {
+        this.log(id + ' : unexpect end call after socket closed!');
+        return false;
+    }
     
     this.log(id + " : client end");
     
