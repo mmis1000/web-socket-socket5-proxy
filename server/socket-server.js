@@ -133,7 +133,7 @@ SocketServer.prototype.dieConnection = function dieConnection(id, reason) {
 
 SocketServer.prototype.onClientWrite = function onClientWrite(data) {
     data = this.unPack_(data);
-    id = data.id;
+    var id = data.id;
     if (!this.socketMap[id]) {
         this.log(id + ' : unexpect write call after socket closed!');
         return false;
@@ -148,7 +148,7 @@ SocketServer.prototype.onClientWrite = function onClientWrite(data) {
 }
 SocketServer.prototype.onClientEnd = function onClientEnd(data) {
     data = this.unPack_(data);
-    id = data.id;
+    var id = data.id;
     if (!this.socketMap[id]) {
         this.log(id + ' : unexpect end call after socket closed!');
         return false;
@@ -160,7 +160,7 @@ SocketServer.prototype.onClientEnd = function onClientEnd(data) {
 }
 SocketServer.prototype.onClientDestroy = function onClientDestroy(data) {
     data = this.unPack_(data);
-    id = data.id;
+    var id = data.id;
     
     this.log(id + " : client destroy");
     
